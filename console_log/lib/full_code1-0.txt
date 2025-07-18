@@ -1,0 +1,245 @@
+#include <iostream>
+#include <string>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <mutex>
+#include <cstdarg>
+#include <vector>
+#include <cstdlib>
+#include <stdexcept>
+#include <algorithm>
+
+namespace console_log_msg {
+
+    class Program final {
+    public:
+        enum class LogLevel { TRACE, DEBUG, INFO, WARNING, ERROR, FATAL, UNKNOWN };
+    private:
+        static std::string getTimestamp() {
+            try {
+                auto now = std::chrono::system_clock::now();
+                auto in_time = std::chrono::system_clock::to_time_t(now);
+                std::tm tmStruct;
+            #ifdef _WIN32
+                localtime_s(&tmStruct, &in_time);
+            #else
+                localtime_r(&in_time, &tmStruct);
+            #endif
+                std::ostringstream oss;
+                oss << std::put_time(&tmStruct, "%Y-%m-%d %H:%M:%S");
+                return oss.str();
+            } catch (...) {
+                return "[timestamp error]";
+            }
+        }
+
+        static std::string getColorCode(LogLevel level) {
+            switch (level) {
+                case LogLevel::TRACE:   return "\033[90m";
+                case LogLevel::DEBUG:   return "\033[36m";
+                case LogLevel::INFO:    return "\033[32m";
+                case LogLevel::WARNING: return "\033[33m";
+                case LogLevel::ERROR:   return "\033[31m";
+                case LogLevel::FATAL:   return "\033[41m\033[37m";
+                default:                return "\033[0m";
+            }
+        }
+
+        class Trace {
+        protected:
+            virtual ~Trace() = default;
+            virtual void trace__(const std::string& msg) = 0;
+            virtual void tracef__(const char* fmt, ...) = 0;
+        };
+
+        class Debug {
+        protected:
+            virtual ~Debug() = default;
+            virtual void debug__(const std::string& msg) = 0;
+            virtual void debugf__(const char* fmt, ...) = 0;
+        };
+
+        class Info {
+        protected:
+            virtual ~Info() = default;
+            virtual void info__(const std::string& msg) = 0;
+            virtual void infof__(const char* fmt, ...) = 0;
+        };
+
+        class Warning {
+        protected:
+            virtual ~Warning() = default;
+            virtual void warning__(const std::string& msg) = 0;
+            virtual void warningf__(const char* fmt, ...) = 0;
+        };
+
+        class Error {
+        protected:
+            virtual ~Error() = default;
+            virtual void error__(const std::string& msg) = 0;
+            virtual void errorf__(const char* fmt, ...) = 0;
+        };
+
+        class Fatal {
+        protected:
+            virtual ~Fatal() = default;
+            virtual void fatal__(const std::string& msg) = 0;
+            virtual void fatalf__(const char* fmt, ...) = 0;
+        };
+
+    public:
+        class Logger final :
+            private Trace, private Debug, private Info,
+            private Warning, private Error, private Fatal {
+        private:
+            LogLevel currentLevel = LogLevel::INFO;
+            std::string logFormat = "[{timestamp}] [{level}] {message}";
+            mutable std::mutex logMutex;
+
+            std::string levelToString(LogLevel level) const {
+                switch (level) {
+                    case LogLevel::TRACE:   return "TRACE";
+                    case LogLevel::DEBUG:   return "DEBUG";
+                    case LogLevel::INFO:    return "INFO";
+                    case LogLevel::WARNING: return "WARNING";
+                    case LogLevel::ERROR:   return "ERROR";
+                    case LogLevel::FATAL:   return "FATAL";
+                    default:                return "UNKNOWN";
+                }
+            }
+
+            void replaceAll(std::string& str, const std::string& from, const std::string& to) const {
+                if (from.empty()) return;
+                size_t start_pos = 0;
+                while ((start_pos = str.find(from, start_pos))) {
+                    str.replace(start_pos, from.length(), to);
+                    start_pos += to.length();
+                }
+            }
+
+            Logger() = default;
+            ~Logger() override = default;
+
+            void log(LogLevel level, const std::string& message) const {
+                try {
+                    if(level < currentLevel) return;
+
+                    std::lock_guard<std::mutex> lock(logMutex);
+                    
+                    std::string formatted = logFormat;
+                    replaceAll(formatted, "{timestamp}", getTimestamp());
+                    replaceAll(formatted, "{level}", levelToString(level));
+                    replaceAll(formatted, "{message}", message);
+
+                    std::cout << getColorCode(level) << formatted << "\033[0m" << std::endl;
+
+                    if (level == LogLevel::FATAL) std::exit(EXIT_FAILURE);
+                } catch (...) {
+                    // Fallback minimal logging if something goes wrong
+                    std::cerr << "LOG ERROR: " << message << std::endl;
+                }
+            }
+
+            std::string vformat(const char* fmt, va_list args) {
+                try {
+                    std::vector<char> buffer(1024);
+                    int len = vsnprintf(buffer.data(), buffer.size(), fmt, args);
+                    if (len < 0) return "format error";
+                    if (len >= static_cast<int>(buffer.size())) {
+                        buffer.resize(len + 1);
+                        vsnprintf(buffer.data(), buffer.size(), fmt, args);
+                    }
+                    return std::string(buffer.data());
+                } catch (...) {
+                    return "formatting error";
+                }
+            }
+
+        public:
+            static Logger& getInstance() { 
+                static Logger instance; 
+                return instance; 
+            }
+
+            // Item 1: Controle de nível de log
+            void setLogLevel(LogLevel level) { 
+                std::lock_guard<std::mutex> lock(logMutex);
+                currentLevel = level; 
+            }
+            
+            LogLevel getLogLevel() const { 
+                std::lock_guard<std::mutex> lock(logMutex);
+                return currentLevel; 
+            }
+
+            // Item 3: Formatação customizável
+            void setFormat(const std::string& fmt) { 
+                std::lock_guard<std::mutex> lock(logMutex);
+                logFormat = fmt; 
+            }
+
+            // Item 6: Métodos auxiliares
+            void logException(const std::exception& e, LogLevel level = LogLevel::ERROR) {
+                try {
+                    log(level, std::string("Exception: ") + e.what());
+                } catch (...) {
+                    std::cerr << "Failed to log exception: " << e.what() << std::endl;
+                }
+            }
+
+            void logWithDuration(const std::string& message, 
+                        std::chrono::milliseconds duration,
+                        LogLevel level = LogLevel::INFO) {
+                try {
+                    std::ostringstream oss;
+                    oss << message << " (took " << duration.count() << "ms)";
+                    log(level, oss.str());
+                } catch (...) {
+                    std::cerr << "Failed to log duration" << std::endl;
+                }
+            }
+
+            // Implementações das interfaces
+            void trace__(const std::string& msg) override { log(LogLevel::TRACE, msg); }
+            void debug__(const std::string& msg) override { log(LogLevel::DEBUG, msg); }
+            void info__(const std::string& msg) override { log(LogLevel::INFO, msg); }
+            void warning__(const std::string& msg) override { log(LogLevel::WARNING, msg); }
+            void error__(const std::string& msg) override { log(LogLevel::ERROR, msg); }
+            void fatal__(const std::string& msg) override { log(LogLevel::FATAL, msg); }
+            
+            void tracef__(const char* fmt, ...) override {
+                va_list args; va_start(args, fmt); 
+                try { trace__(vformat(fmt, args)); } catch (...) {}
+                va_end(args);
+            }
+            void debugf__(const char* fmt, ...) override {
+                va_list args; va_start(args, fmt); 
+                try { debug__(vformat(fmt, args)); } catch (...) {}
+                va_end(args);
+            }
+            void infof__(const char* fmt, ...) override {
+                va_list args; va_start(args, fmt); 
+                try { info__(vformat(fmt, args)); } catch (...) {}
+                va_end(args);
+            }
+            void warningf__(const char* fmt, ...) override {
+                va_list args; va_start(args, fmt); 
+                try { warning__(vformat(fmt, args)); } catch (...) {}
+                va_end(args);
+            }
+            void errorf__(const char* fmt, ...) override {
+                va_list args; va_start(args, fmt); 
+                try { error__(vformat(fmt, args)); } catch (...) {}
+                va_end(args);
+            }
+            void fatalf__(const char* fmt, ...) override {
+                va_list args; va_start(args, fmt); 
+                try { fatal__(vformat(fmt, args)); } catch (...) {}
+                va_end(args);
+            }
+        };
+    };
+
+} // namespace console_log_msg
