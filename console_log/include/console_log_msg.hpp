@@ -15,9 +15,8 @@ namespace console_log_msg {
 
     class Program final {
     public: enum class LogLevel { TRACE, DEBUG, INFO, WARNING, ERROR, FATAL, UNKNOWN };
-    private:
         
-        class Trace {
+       private: class Trace {
         protected:
             virtual ~Trace() = default;
             virtual void trace__(const std::string& msg = "...") const = 0;
@@ -31,7 +30,7 @@ namespace console_log_msg {
                 }
         };
 
-        class Debug {
+        private: class Debug {
         protected:
             virtual ~Debug() = default;
             virtual void debug__(const std::string& msg = "...") const = 0;
@@ -45,7 +44,7 @@ namespace console_log_msg {
                 }
         };
 
-        class Info {
+        private: class Info {
         protected:
             virtual ~Info() = default;
             virtual void info__(const std::string& msg = "...") const = 0;
@@ -59,7 +58,7 @@ namespace console_log_msg {
                 }
         };
 
-        class Warning {
+        private: class Warning {
         protected:
             virtual ~Warning() = default;
             virtual void warning__(const std::string& msg = "...") const = 0;
@@ -73,7 +72,7 @@ namespace console_log_msg {
                 }
         };
 
-        class Error {
+        private: class Error {
         protected:
             virtual ~Error() = default;
             virtual void error__(const std::string& msg = "...") const = 0;
@@ -87,7 +86,7 @@ namespace console_log_msg {
                 }
         };
 
-        class Fatal {
+        private: class Fatal {
         protected:
             virtual ~Fatal() = default;
             virtual void fatal__(const std::string& msg = "...") const = 0;
