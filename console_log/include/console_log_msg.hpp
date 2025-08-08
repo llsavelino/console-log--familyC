@@ -100,8 +100,7 @@ namespace console_log_msg {
                 }
         };
 
-    public:
-        class Logger final :
+    public: class Logger final :
             private Trace, private Debug, private Info, private Warning, private Error, private Fatal {
         private:
             LogLevel currentLevel;
@@ -125,47 +124,48 @@ namespace console_log_msg {
             void setLogLevel(LogLevel level = LogLevel::UNKNOWN);
             LogLevel getLogLevel() const;
             void setFormat(const std::string& fmt);
-            void logException(const std::exception& e, LogLevel level = LogLevel::ERROR) const;
+            void logException(const std::exception& e, 
+                            LogLevel level = LogLevel::ERROR) const;
             void logWithDuration(const std::string& message, 
-                                std::chrono::milliseconds duration,
-                                LogLevel level = LogLevel::INFO) const;
+                            std::chrono::milliseconds duration,
+                            LogLevel level = LogLevel::INFO) const;
 
             // Implementações das interfaces
-            void trace__(const std::string& msg = "...") const override;
-            void debug__(const std::string& msg = "...") const override;
-            void info__(const std::string& msg = "...") const override;
-            void warning__(const std::string& msg = "...") const override;
-            void error__(const std::string& msg = "...") const override;
-            void fatal__(const std::string& msg = "...") const override;
+            public: void trace__(const std::string& msg = "...") const override;
+            public: void debug__(const std::string& msg = "...") const override;
+            public: void info__(const std::string& msg = "...") const override;
+            public: void warning__(const std::string& msg = "...") const override;
+            public: void error__(const std::string& msg = "...") const override;
+            public: void fatal__(const std::string& msg = "...") const override;
             
-            void tracef__(const char* fmt = "...", ...) const override;
-            void debugf__(const char* fmt = "...", ...) const override;
-            void infof__(const char* fmt = "...", ...) const override;
-            void warningf__(const char* fmt = "...", ...) const override;
-            void errorf__(const char* fmt = "...", ...) const override;
-            void fatalf__(const char* fmt = "...", ...) const override;
+            public: void tracef__(const char* fmt = "...", ...) const override;
+            public: void debugf__(const char* fmt = "...", ...) const override;
+            public: void infof__(const char* fmt = "...", ...) const override;
+            public: void warningf__(const char* fmt = "...", ...) const override;
+            public: void errorf__(const char* fmt = "...", ...) const override;
+            public: void fatalf__(const char* fmt = "...", ...) const override;
 
-            template<typename T, typename... Args> void tracet__(T&& t, Args&&... args) 
+            public: template<typename T, typename... Args> void tracet__(T&& t, Args&&... args) 
             const {
                 ttt(std::forward<T>(t), std::forward<Args>(args)...);
             };
-            template<typename T, typename... Args> void debugt__(T&& t, Args&&... args) 
+            public: template<typename T, typename... Args> void debugt__(T&& t, Args&&... args) 
             const {
                 ddd(std::forward<T>(t), std::forward<Args>(args)...);
             };
-            template<typename T, typename... Args> void infot__(T&& t, Args&&... args) 
+            public: template<typename T, typename... Args> void infot__(T&& t, Args&&... args) 
             const {
                 iii(std::forward<T>(t), std::forward<Args>(args)...);
             };
-            template<typename T, typename... Args> void warningt__(T&& t, Args&&... args) 
+            public: template<typename T, typename... Args> void warningt__(T&& t, Args&&... args) 
             const {
                 www(std::forward<T>(t), std::forward<Args>(args)...);
             };
-            template<typename T, typename... Args> void errort__(T&& t, Args&&... args) 
+            public: template<typename T, typename... Args> void errort__(T&& t, Args&&... args) 
             const {
                 eee(std::forward<T>(t), std::forward<Args>(args)...);
             };
-            template<typename T, typename... Args> void fatalt__(T&& t, Args&&... args) 
+            public: template<typename T, typename... Args> void fatalt__(T&& t, Args&&... args) 
             const {
                 fff(std::forward<T>(t), std::forward<Args>(args)...);
             };
